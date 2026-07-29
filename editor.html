@@ -5,6 +5,7 @@
 <title>Judicial Workbench</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --ink:#1B2A4A;
@@ -57,6 +58,8 @@
   .icon-btn:hover{background:var(--ink-2);color:#fff;}
   .icon-btn svg{width:16px;height:16px;}
   .icon-btn .badge{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--burgundy);}
+  #accountAvatar.on{display:flex!important;}
+  #accountBtn.signed-in svg#accountIconSvg{display:none;}
 
   /* ---- nav tabs ---- */
   .navtabs{
@@ -280,7 +283,33 @@
     <div class="brand"><span class="scale">&#9878;</span> Judicial Workbench</div>
     <div class="title-icons" style="position:relative;">
       <button class="icon-btn" data-tip="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="badge"></span></button>
-      <button class="icon-btn" data-tip="Account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg></button>
+      <button class="icon-btn" id="accountBtn" data-tip="Account">
+        <span id="accountAvatar" style="display:none;font-family:var(--serif);font-weight:600;font-size:12px;background:var(--brass);color:#fff;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;"></span>
+        <svg id="accountIconSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
+      </button>
+      <div class="popover" id="accountPopover" style="min-width:250px;">
+        <div id="authLoggedOut">
+          <h4>Team sign-in</h4>
+          <div class="field-label" style="margin-top:0;">Your name</div>
+          <input type="text" id="authDisplayName" placeholder="e.g. Wanjiru K.">
+          <div class="field-label">Email</div>
+          <input type="text" id="authEmail" placeholder="you@firm.com">
+          <div class="field-label">Password</div>
+          <input type="text" id="authPassword" placeholder="At least 6 characters" style="-webkit-text-security:disc;">
+          <div class="row2">
+            <button class="secondary" id="authSignupBtn">Sign up</button>
+            <button id="authLoginBtn">Sign in</button>
+          </div>
+          <div class="note" id="authNote">Team members sign in to save the filing to the shared database and log their work sessions on it.</div>
+        </div>
+        <div id="authLoggedIn" style="display:none;">
+          <h4 id="authWelcome">Signed in</h4>
+          <div class="info-row"><span>Session</span><span id="sessionStatus">Not started</span></div>
+          <div class="row2"><button id="sessionToggleBtn">Start session</button></div>
+          <div class="note">Starting a session logs your name and start time to Team Activity in the Explorer — it doesn't lock the document, it just records who worked when.</div>
+          <div class="row2" style="margin-top:12px;"><button class="secondary" id="authLogoutBtn">Log out</button></div>
+        </div>
+      </div>
       <button class="icon-btn" id="settingsBtn" data-tip="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
       <div class="popover" id="settingsPopover">
         <h4>Settings</h4>
@@ -290,7 +319,7 @@
           <option value="en-GB">English (UK)</option>
           <option value="sw-KE">Kiswahili (Kenya)</option>
         </select>
-        <div class="note">This session runs entirely in your browser — nothing here is written to a server or disk yet. Connect it to your case-management backend to persist filings.</div>
+        <div class="note">Signed-in edits save to the shared Postgres database (Supabase). Signed out, this runs locally in your browser only and nothing persists.</div>
       </div>
     </div>
   </div>
@@ -392,6 +421,10 @@
         <div class="ex-head">Evidence</div>
         <div id="evidenceList"><div class="ex-empty">No exhibits attached</div></div>
         <button class="ex-add" id="addExhibitBtn">+ Add exhibit</button>
+      </div>
+      <div class="ex-section" id="teamSection">
+        <div class="ex-head">Team activity<button class="icon-btn" id="refreshTeamBtn" title="Refresh" style="width:20px;height:20px;color:var(--slate);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button></div>
+        <div id="teamList"><div class="ex-empty">Sign in (top right) to see who's worked on this filing</div></div>
       </div>
     </div>
 
@@ -516,6 +549,210 @@
   const editor = document.getElementById('editor');
   const pageScroll = document.getElementById('pageScroll');
 
+  /* ================================================================
+     SUPABASE — Postgres-backed persistence, auth, and the team
+     "who worked when" session log.
+
+     >>> FILL THESE TWO IN from Supabase → Project Settings → API <<<
+  ================================================================ */
+  const SUPABASE_URL = 'https://hrulayrkxvsrjqootwdj.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhydWxheXJreHZzcmpxb290d2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjYyMjUsImV4cCI6MjEwMDgwMjIyNX0.mcTVTuJl5WssYeE644NBf2RV6Oc8RzhjFKLnYgzTerA';
+
+  const supabaseReady = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20 && window.supabase;
+  const sb = supabaseReady ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+  let currentUser = null;       // { id, email }
+  let currentDisplayName = '';
+  let activeSession = null;     // { id, startedAt, startWords }
+
+  const accountBtn = document.getElementById('accountBtn');
+  const accountAvatar = document.getElementById('accountAvatar');
+  const accountIconSvg = document.getElementById('accountIconSvg');
+  const authLoggedOut = document.getElementById('authLoggedOut');
+  const authLoggedIn = document.getElementById('authLoggedIn');
+  const authNote = document.getElementById('authNote');
+  const sessionStatus = document.getElementById('sessionStatus');
+  const sessionToggleBtn = document.getElementById('sessionToggleBtn');
+
+  if(!supabaseReady){
+    authNote.innerHTML = 'Not connected to a database yet \u2014 add your Supabase URL and anon key in the code (search for <code>SUPABASE_URL</code>) to enable real sign-in, saving, and the team log. Everything else in the app still works locally without it.';
+    document.querySelectorAll('#authSignupBtn,#authLoginBtn').forEach(b=> b.disabled = true);
+  }
+
+  function setSignedInUI(user, displayName){
+    currentUser = user; currentDisplayName = displayName || (user && user.email) || '';
+    authLoggedOut.style.display = 'none';
+    authLoggedIn.style.display = 'block';
+    document.getElementById('authWelcome').textContent = 'Signed in as ' + currentDisplayName;
+    accountAvatar.textContent = (currentDisplayName || '?').trim().charAt(0).toUpperCase();
+    accountAvatar.classList.add('on');
+    accountBtn.classList.add('signed-in');
+  }
+  function setSignedOutUI(){
+    currentUser = null; currentDisplayName = ''; activeSession = null;
+    authLoggedOut.style.display = 'block';
+    authLoggedIn.style.display = 'none';
+    accountAvatar.classList.remove('on');
+    accountBtn.classList.remove('signed-in');
+    sessionToggleBtn.textContent = 'Start session';
+    sessionStatus.textContent = 'Not started';
+  }
+
+  async function ensureProfile(user, displayName){
+    if(!sb) return;
+    await sb.from('profiles').upsert({ id: user.id, display_name: displayName || user.email }).select();
+  }
+
+  document.getElementById('authSignupBtn').addEventListener('click', async ()=>{
+    if(!sb) return;
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const name = document.getElementById('authDisplayName').value.trim() || email;
+    if(!email || password.length < 6){ authNote.textContent = 'Enter an email and a password of at least 6 characters.'; return; }
+    authNote.textContent = 'Creating your account…';
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if(error){ authNote.textContent = 'Sign-up failed: ' + error.message; return; }
+    if(data.user){ await ensureProfile(data.user, name); }
+    if(data.session){
+      setSignedInUI(data.user, name);
+      await loadDocument();
+    } else {
+      authNote.textContent = 'Account created \u2014 check your email to confirm, then sign in. (Or turn off "Confirm email" in Supabase \u2192 Authentication \u2192 Providers while testing.)';
+    }
+  });
+
+  document.getElementById('authLoginBtn').addEventListener('click', async ()=>{
+    if(!sb) return;
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    if(!email || !password){ authNote.textContent = 'Enter your email and password.'; return; }
+    authNote.textContent = 'Signing in…';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){ authNote.textContent = 'Sign-in failed: ' + error.message; return; }
+    const { data: profile } = await sb.from('profiles').select('display_name').eq('id', data.user.id).single();
+    setSignedInUI(data.user, (profile && profile.display_name) || email);
+    await loadDocument();
+    await renderTeamActivity();
+  });
+
+  document.getElementById('authLogoutBtn').addEventListener('click', async ()=>{
+    if(activeSession) await endSession();
+    if(sb) await sb.auth.signOut();
+    setSignedOutUI();
+  });
+
+  /* ---------------- DOCUMENT PERSISTENCE ---------------- */
+  async function loadDocument(){
+    if(!sb || !currentUser) return;
+    const { data, error } = await sb.from('documents').select('*').eq('id','primary').single();
+    if(error || !data) return;
+    if(data.content && data.content.trim()) editor.innerHTML = data.content;
+    if(data.title) document.getElementById('docTitle').value = data.title;
+    if(data.case_no) document.getElementById('caseNo').value = data.case_no;
+    updateCounts();
+  }
+
+  let cloudSaveTimer = null;
+  function scheduleCloudSave(){
+    if(!sb || !currentUser) return;
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(async ()=>{
+      const { error } = await sb.from('documents').update({
+        content: editor.innerHTML,
+        title: document.getElementById('docTitle').value,
+        case_no: document.getElementById('caseNo').value,
+        updated_at: new Date().toISOString(),
+        updated_by: currentUser.id
+      }).eq('id','primary');
+      const savedIndicator = document.getElementById('savedIndicator');
+      if(error){ savedIndicator.textContent = 'Save failed \u2014 retrying…'; savedIndicator.classList.remove('saved-ok'); }
+      else { savedIndicator.textContent = 'Saved \u2713'; savedIndicator.classList.add('saved-ok'); }
+    }, 1200);
+  }
+
+  /* ---------------- SESSION LOG (non-blocking) ---------------- */
+  async function startSession(){
+    if(!sb || !currentUser) return;
+    const startWords = editor.innerText.trim() ? editor.innerText.trim().split(/\s+/).length : 0;
+    const { data, error } = await sb.from('edit_sessions').insert({
+      document_id: 'primary', user_id: currentUser.id, display_name: currentDisplayName,
+      started_at: new Date().toISOString()
+    }).select().single();
+    if(error){ sessionStatus.textContent = 'Couldn\u2019t start: ' + error.message; return; }
+    activeSession = { id: data.id, startedAt: Date.now(), startWords };
+    sessionToggleBtn.textContent = 'End session';
+    tickSessionStatus();
+    activeSession.timer = setInterval(tickSessionStatus, 30000);
+  }
+  function tickSessionStatus(){
+    if(!activeSession) return;
+    const mins = Math.max(0, Math.round((Date.now() - activeSession.startedAt) / 60000));
+    sessionStatus.textContent = mins < 1 ? 'Just started' : mins + ' min elapsed';
+  }
+  async function endSession(){
+    if(!sb || !activeSession) return;
+    clearInterval(activeSession.timer);
+    const durationSeconds = Math.round((Date.now() - activeSession.startedAt) / 1000);
+    const endWords = editor.innerText.trim() ? editor.innerText.trim().split(/\s+/).length : 0;
+    const delta = endWords - activeSession.startWords;
+    const summary = delta === 0 ? 'No net word-count change' : (delta > 0 ? '+' + delta + ' words' : delta + ' words');
+    await sb.from('edit_sessions').update({
+      ended_at: new Date().toISOString(), duration_seconds: durationSeconds, summary
+    }).eq('id', activeSession.id);
+    activeSession = null;
+    sessionToggleBtn.textContent = 'Start session';
+    sessionStatus.textContent = 'Not started';
+    await renderTeamActivity();
+  }
+  sessionToggleBtn.addEventListener('click', ()=>{ activeSession ? endSession() : startSession(); });
+
+  // Best-effort: try to close out the session if the tab is closed mid-work.
+  // Not guaranteed by browsers, hence "best-effort" — the manual "End session"
+  // button is the reliable path.
+  window.addEventListener('pagehide', ()=>{
+    if(activeSession && sb){
+      const durationSeconds = Math.round((Date.now() - activeSession.startedAt) / 1000);
+      fetch(SUPABASE_URL + '/rest/v1/edit_sessions?id=eq.' + activeSession.id, {
+        method: 'PATCH', keepalive: true,
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY },
+        body: JSON.stringify({ ended_at: new Date().toISOString(), duration_seconds: durationSeconds, summary: 'Ended by closing tab' })
+      });
+    }
+  });
+
+  /* ---------------- TEAM ACTIVITY LIST ---------------- */
+  async function renderTeamActivity(){
+    const list = document.getElementById('teamList');
+    if(!sb || !currentUser){ list.innerHTML = '<div class="ex-empty">Sign in (top right) to see who\u2019s worked on this filing</div>'; return; }
+    const { data, error } = await sb.from('edit_sessions').select('*').eq('document_id','primary').order('started_at',{ascending:false}).limit(20);
+    if(error || !data || !data.length){ list.innerHTML = '<div class="ex-empty">No sessions logged yet</div>'; return; }
+    list.innerHTML = '';
+    data.forEach(s=>{
+      const started = new Date(s.started_at);
+      const when = started.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' ' + started.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      const dur = s.duration_seconds ? Math.round(s.duration_seconds/60) + ' min' : 'in progress';
+      const row = document.createElement('div');
+      row.className = 'ex-item';
+      row.style.display = 'block';
+      row.innerHTML = '<strong>' + escapeAttr(s.display_name) + '</strong> &middot; ' + dur + '<br><span style="color:var(--slate-light);font-size:11px;">' + when + (s.summary ? ' \u2014 ' + escapeAttr(s.summary) : '') + '</span>';
+      list.appendChild(row);
+    });
+  }
+  function escapeAttr(s){ return String(s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  document.getElementById('refreshTeamBtn').addEventListener('click', (e)=>{ e.stopPropagation(); renderTeamActivity(); });
+
+  /* restore session on page load if Supabase already has one (subject to
+     browser storage — see note in chat about this inside the Claude preview) */
+  if(sb){
+    sb.auth.getSession().then(async ({data})=>{
+      if(data && data.session && data.session.user){
+        const { data: profile } = await sb.from('profiles').select('display_name').eq('id', data.session.user.id).single();
+        setSignedInUI(data.session.user, (profile && profile.display_name) || data.session.user.email);
+        await loadDocument();
+        await renderTeamActivity();
+      }
+    });
+  }
+
   /* ---------------- WORD / PAGE COUNTS + AUTOSAVE INDICATOR ---------------- */
   const savedIndicator = document.getElementById('savedIndicator');
   let saveTimer = null;
@@ -527,15 +764,22 @@
     document.getElementById('statusPage').textContent = 'Page 1 of ' + pages;
     document.getElementById('pageCountLabel').textContent = pages + (pages===1?' estimated page':' estimated pages');
     rebuildHeadings();
-    savedIndicator.textContent = 'Saving…';
-    savedIndicator.classList.remove('saved-ok');
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(()=>{
-      savedIndicator.textContent = 'Saved \u2713';
-      savedIndicator.classList.add('saved-ok');
-    }, 700);
+    if(currentUser){
+      scheduleCloudSave();
+      savedIndicator.textContent = 'Saving…';
+      savedIndicator.classList.remove('saved-ok');
+    } else {
+      savedIndicator.textContent = 'Saving…';
+      savedIndicator.classList.remove('saved-ok');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(()=>{
+        savedIndicator.textContent = 'Saved locally \u2713';
+        savedIndicator.classList.add('saved-ok');
+      }, 700);
+    }
   }
   editor.addEventListener('input', updateCounts);
+
 
   /* ---------------- HEADINGS OUTLINE (Explorer) ---------------- */
   function rebuildHeadings(){
@@ -1153,6 +1397,11 @@
   settingsBtn.addEventListener('click', (e)=>{ e.stopPropagation(); settingsPopover.classList.toggle('open'); });
   document.addEventListener('click', ()=> settingsPopover.classList.remove('open'));
   settingsPopover.addEventListener('click', (e)=> e.stopPropagation());
+
+  const accountPopover = document.getElementById('accountPopover');
+  accountBtn.addEventListener('click', (e)=>{ e.stopPropagation(); accountPopover.classList.toggle('open'); });
+  document.addEventListener('click', ()=> accountPopover.classList.remove('open'));
+  accountPopover.addEventListener('click', (e)=> e.stopPropagation());
 
   updateCounts();
 })();

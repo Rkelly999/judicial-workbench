@@ -60,6 +60,28 @@
   .icon-btn .badge{position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--burgundy);}
   #accountAvatar.on{display:flex!important;}
   #accountBtn.signed-in svg#accountIconSvg{display:none;}
+  @keyframes flashPulse{
+    0%{background:rgba(166,124,61,.22);}
+    100%{background:transparent;}
+  }
+  .flash-highlight{animation:flashPulse 1s ease-out;border-radius:6px;}
+
+  /* ---- sign-in gate: blocks the app until authenticated ---- */
+  .auth-gate{
+    position:fixed;inset:0;z-index:500;
+    background:var(--ink-3) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="none"/></svg>');
+    display:flex;align-items:center;justify-content:center;
+  }
+  .auth-gate.hidden{display:none;}
+  .auth-gate-card{
+    width:320px;background:var(--paper);border-radius:12px;padding:28px 26px;
+    box-shadow:0 30px 70px rgba(0,0,0,.45);border:1px solid var(--paper-line);
+  }
+  .auth-gate-card input[type=text]{
+    width:100%;padding:9px 10px;border:1px solid var(--paper-line);border-radius:6px;
+    font-family:var(--sans);font-size:13px;background:#fff;outline:none;margin-top:0;
+  }
+  .auth-gate-card input[type=text]:focus{border-color:var(--brass);}
 
   /* ---- nav tabs ---- */
   .navtabs{
@@ -215,6 +237,7 @@
   .row2{display:flex;gap:7px;margin-top:9px;}
   .row2 button,.full-btn{flex:1;background:var(--ink);color:#fff;border:none;border-radius:6px;padding:8px;font-size:12px;font-weight:500;}
   .row2 button.secondary{background:#fff;color:var(--ink);border:1px solid var(--paper-line);}
+  .row2 button:disabled{opacity:.5;cursor:not-allowed;}
   .full-btn{width:100%;margin-top:8px;}
   .match-count{font-size:11px;color:var(--slate);margin-top:7px;text-align:center;}
 
@@ -276,6 +299,29 @@
 </head>
 <body>
 
+<div class="auth-gate" id="authGate">
+  <div class="auth-gate-card">
+    <div class="brand" style="color:var(--ink);justify-content:center;font-size:19px;margin-bottom:4px;"><span class="scale">&#9878;</span> Judicial Workbench</div>
+    <p style="text-align:center;color:var(--slate);font-size:12.5px;margin:0 0 18px;">Sign in to work on this filing</p>
+
+    <div id="authStepEmail">
+      <div class="field-label" style="margin-top:0;">Your name</div>
+      <input type="text" id="authDisplayName" placeholder="e.g. Wanjiru K.">
+      <div class="field-label">Email</div>
+      <input type="text" id="authEmail" placeholder="you@firm.com">
+      <div class="row2"><button id="sendCodeBtn" style="width:100%;">Send me a code</button></div>
+      <div class="note" id="authNote">We'll email a 6-digit code to confirm it's really you. First time on this email creates your account; every time after just signs you back in \u2014 one email always maps to one person.</div>
+    </div>
+
+    <div id="authStepCode" style="display:none;">
+      <div class="field-label" style="margin-top:0;">6-digit code</div>
+      <input type="text" id="authCode" placeholder="123456" inputmode="numeric" maxlength="6" style="letter-spacing:4px;text-align:center;font-family:var(--mono);font-size:16px;">
+      <div class="row2"><button id="verifyCodeBtn" style="width:100%;">Verify &amp; continue</button></div>
+      <div class="note" id="authCodeNote">Code sent to <strong id="authCodeEmailLabel"></strong>. Didn't get it? <button id="resendCodeBtn" style="background:none;border:none;text-decoration:underline;color:var(--ink);cursor:pointer;padding:0;font-size:11px;">Resend</button> &middot; <button id="changeEmailBtn" style="background:none;border:none;text-decoration:underline;color:var(--ink);cursor:pointer;padding:0;font-size:11px;">Use a different email</button></div>
+    </div>
+  </div>
+</div>
+
 <div class="workbench">
 
   <!-- TITLEBAR -->
@@ -288,20 +334,6 @@
         <svg id="accountIconSvg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>
       </button>
       <div class="popover" id="accountPopover" style="min-width:250px;">
-        <div id="authLoggedOut">
-          <h4>Team sign-in</h4>
-          <div class="field-label" style="margin-top:0;">Your name</div>
-          <input type="text" id="authDisplayName" placeholder="e.g. Wanjiru K.">
-          <div class="field-label">Email</div>
-          <input type="text" id="authEmail" placeholder="you@firm.com">
-          <div class="field-label">Password</div>
-          <input type="text" id="authPassword" placeholder="At least 6 characters" style="-webkit-text-security:disc;">
-          <div class="row2">
-            <button class="secondary" id="authSignupBtn">Sign up</button>
-            <button id="authLoginBtn">Sign in</button>
-          </div>
-          <div class="note" id="authNote">Team members sign in to save the filing to the shared database and log their work sessions on it.</div>
-        </div>
         <div id="authLoggedIn" style="display:none;">
           <h4 id="authWelcome">Signed in</h4>
           <div class="info-row"><span>Session</span><span id="sessionStatus">Not started</span></div>
@@ -325,7 +357,7 @@
   </div>
 
   <!-- NAV TABS -->
-  <div class="navtabs">
+  <div class="navtabs" style="position:relative;">
     <button class="navtab active" data-view="home">Home</button>
     <button class="navtab" data-view="documents">Documents</button>
     <button class="navtab" data-view="transcript">Transcript</button>
@@ -333,6 +365,17 @@
     <button class="navtab" data-view="review">Review</button>
     <button class="navtab" data-view="ai">AI</button>
     <button class="navtab" data-view="settings">Settings</button>
+    <div class="popover" id="docInfoPopover" style="top:38px;left:78px;right:auto;min-width:230px;">
+      <div class="tabpanel-head" style="padding:0 0 10px;border:none;">
+        <h4 style="margin:0;">Document info</h4>
+        <button id="docInfoCloseBtn" style="background:none;border:none;color:var(--slate);font-size:16px;">&times;</button>
+      </div>
+      <div class="info-row"><span>Title</span><span id="diTitle">\u2014</span></div>
+      <div class="info-row"><span>Case No.</span><span id="diCase">\u2014</span></div>
+      <div class="info-row"><span>Words</span><span id="diWords">0</span></div>
+      <div class="info-row"><span>Pages</span><span id="diPages">1</span></div>
+      <div class="info-row" style="border-bottom:none;"><span>Last saved</span><span id="diSaved">\u2014</span></div>
+    </div>
   </div>
 
   <!-- RIBBON -->
@@ -403,8 +446,8 @@
     <div class="explorer">
       <div class="ex-section">
         <div class="ex-head">Pages</div>
-        <div class="ex-item" id="jumpTop"><span class="dot"></span>Page 1 &mdash; top of document</div>
-        <div class="ex-empty" id="pageCountLabel">1 estimated page</div>
+        <div id="pagesList"><div class="ex-item" id="jumpTop"><span class="dot"></span>Page 1 &mdash; top of document</div></div>
+        <div class="ex-empty" id="pageCountLabel">1 page</div>
       </div>
       <div class="ex-section" id="headingsSection">
         <div class="ex-head">Headings</div>
@@ -431,17 +474,13 @@
     <!-- DOCUMENT -->
     <div class="doc-area">
       <div class="review-banner" id="reviewBanner">Editing paused — Review mode<button id="resumeEditBtn">Resume editing</button></div>
+      <div class="review-banner" id="lockBanner" style="background:var(--burgundy);">&#128274; <span id="lockBannerText">Locked</span><button id="refreshLockBtn">Refresh</button></div>
       <div class="page-scroll" id="pageScroll">
         <div class="page">
           <div class="punch-holes"><span></span><span></span><span></span><span></span></div>
           <div class="margin-rule"></div>
           <div class="editor" id="editor" contenteditable="true" spellcheck="true">
-            <h1>In the Matter of an Application</h1>
-            <p style="text-align:center;">Before the Court, sitting at Nairobi</p>
-            <p>&nbsp;</p>
-            <h2>Application</h2>
-            <p>TAKE NOTICE that the Applicant herein intends to move this Honourable Court for orders that&hellip;</p>
-            <p>Start typing, dictate using the mic in the ribbon or the Transcript panel, or paste from your source document — pasted text won't disturb your place on the page.</p>
+            <p><br></p>
           </div>
         </div>
       </div>
@@ -555,9 +594,9 @@
 
      >>> FILL THESE TWO IN from Supabase → Project Settings → API <<<
   ================================================================ */
-  const SUPABASE_URL = 'https://hrulayrkxvsrjqootwdj.supabase.co';
+ const SUPABASE_URL = 'https://hrulayrkxvsrjqootwdj.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhydWxheXJreHZzcmpxb290d2RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyMjYyMjUsImV4cCI6MjEwMDgwMjIyNX0.mcTVTuJl5WssYeE644NBf2RV6Oc8RzhjFKLnYgzTerA';
-
+  
   const supabaseReady = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20 && window.supabase;
   const sb = supabaseReady ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
   let currentUser = null;       // { id, email }
@@ -567,20 +606,24 @@
   const accountBtn = document.getElementById('accountBtn');
   const accountAvatar = document.getElementById('accountAvatar');
   const accountIconSvg = document.getElementById('accountIconSvg');
-  const authLoggedOut = document.getElementById('authLoggedOut');
+  const authGate = document.getElementById('authGate');
   const authLoggedIn = document.getElementById('authLoggedIn');
   const authNote = document.getElementById('authNote');
   const sessionStatus = document.getElementById('sessionStatus');
   const sessionToggleBtn = document.getElementById('sessionToggleBtn');
 
   if(!supabaseReady){
-    authNote.innerHTML = 'Not connected to a database yet \u2014 add your Supabase URL and anon key in the code (search for <code>SUPABASE_URL</code>) to enable real sign-in, saving, and the team log. Everything else in the app still works locally without it.';
-    document.querySelectorAll('#authSignupBtn,#authLoginBtn').forEach(b=> b.disabled = true);
+    authNote.innerHTML = 'Not connected to a database yet \u2014 add your Supabase URL and anon key in the code (search for <code>SUPABASE_URL</code>) to enable real sign-in and saving. <button id="offlineBypassBtn" style="background:none;border:none;text-decoration:underline;color:var(--ink);cursor:pointer;padding:0;font-size:11px;">Continue without an account (offline demo)</button>';
+    document.getElementById('sendCodeBtn').disabled = true;
+    const bypass = document.getElementById('offlineBypassBtn');
+    if(bypass) bypass.addEventListener('click', ()=> authGate.classList.add('hidden'));
+  } else {
+    // no existing session yet — wait for getSession() below before deciding
   }
 
   function setSignedInUI(user, displayName){
     currentUser = user; currentDisplayName = displayName || (user && user.email) || '';
-    authLoggedOut.style.display = 'none';
+    authGate.classList.add('hidden');
     authLoggedIn.style.display = 'block';
     document.getElementById('authWelcome').textContent = 'Signed in as ' + currentDisplayName;
     accountAvatar.textContent = (currentDisplayName || '?').trim().charAt(0).toUpperCase();
@@ -589,7 +632,11 @@
   }
   function setSignedOutUI(){
     currentUser = null; currentDisplayName = ''; activeSession = null;
-    authLoggedOut.style.display = 'block';
+    if(supabaseReady){
+      authGate.classList.remove('hidden');
+      document.getElementById('authStepCode').style.display = 'none';
+      document.getElementById('authStepEmail').style.display = 'block';
+    }
     authLoggedIn.style.display = 'none';
     accountAvatar.classList.remove('on');
     accountBtn.classList.remove('signed-in');
@@ -602,36 +649,45 @@
     await sb.from('profiles').upsert({ id: user.id, display_name: displayName || user.email }).select();
   }
 
-  document.getElementById('authSignupBtn').addEventListener('click', async ()=>{
-    if(!sb) return;
-    const email = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
-    const name = document.getElementById('authDisplayName').value.trim() || email;
-    if(!email || password.length < 6){ authNote.textContent = 'Enter an email and a password of at least 6 characters.'; return; }
-    authNote.textContent = 'Creating your account…';
-    const { data, error } = await sb.auth.signUp({ email, password });
-    if(error){ authNote.textContent = 'Sign-up failed: ' + error.message; return; }
-    if(data.user){ await ensureProfile(data.user, name); }
-    if(data.session){
-      setSignedInUI(data.user, name);
-      await loadDocument();
-    } else {
-      authNote.textContent = 'Account created \u2014 check your email to confirm, then sign in. (Or turn off "Confirm email" in Supabase \u2192 Authentication \u2192 Providers while testing.)';
-    }
-  });
+  /* ---- email \u2192 one-time code sign-in (no passwords) ---- */
+  let pendingEmail = '', pendingName = '';
 
-  document.getElementById('authLoginBtn').addEventListener('click', async ()=>{
+  async function sendCode(){
     if(!sb) return;
     const email = document.getElementById('authEmail').value.trim();
-    const password = document.getElementById('authPassword').value;
-    if(!email || !password){ authNote.textContent = 'Enter your email and password.'; return; }
-    authNote.textContent = 'Signing in…';
-    const { data, error } = await sb.auth.signInWithPassword({ email, password });
-    if(error){ authNote.textContent = 'Sign-in failed: ' + error.message; return; }
-    const { data: profile } = await sb.from('profiles').select('display_name').eq('id', data.user.id).single();
-    setSignedInUI(data.user, (profile && profile.display_name) || email);
+    const name = document.getElementById('authDisplayName').value.trim();
+    if(!email || !email.includes('@')){ authNote.textContent = 'Enter a valid email address.'; return; }
+    if(!name){ authNote.textContent = 'Enter your name too \u2014 it\u2019s what shows up in the team log.'; return; }
+    authNote.textContent = 'Sending code\u2026';
+    const { error } = await sb.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    if(error){ authNote.textContent = 'Couldn\u2019t send a code: ' + error.message; return; }
+    pendingEmail = email; pendingName = name;
+    document.getElementById('authCodeEmailLabel').textContent = email;
+    document.getElementById('authStepEmail').style.display = 'none';
+    document.getElementById('authStepCode').style.display = 'block';
+    document.getElementById('authCode').value = '';
+    document.getElementById('authCode').focus();
+  }
+  document.getElementById('sendCodeBtn').addEventListener('click', sendCode);
+
+  document.getElementById('verifyCodeBtn').addEventListener('click', async ()=>{
+    if(!sb) return;
+    const code = document.getElementById('authCode').value.trim();
+    const noteEl = document.getElementById('authCodeNote');
+    if(code.length !== 6){ noteEl.textContent = 'Enter the 6-digit code from your email.'; return; }
+    noteEl.textContent = 'Verifying\u2026';
+    const { data, error } = await sb.auth.verifyOtp({ email: pendingEmail, token: code, type: 'email' });
+    if(error){ noteEl.innerHTML = 'That code didn\u2019t work: ' + error.message + ' \u2014 <button id="resendCodeBtn2" style="background:none;border:none;text-decoration:underline;color:var(--ink);cursor:pointer;padding:0;font-size:11px;">resend</button>'; const r = document.getElementById('resendCodeBtn2'); if(r) r.addEventListener('click', sendCode); return; }
+    await ensureProfile(data.user, pendingName);
+    setSignedInUI(data.user, pendingName);
     await loadDocument();
     await renderTeamActivity();
+  });
+
+  document.getElementById('resendCodeBtn').addEventListener('click', sendCode);
+  document.getElementById('changeEmailBtn').addEventListener('click', ()=>{
+    document.getElementById('authStepCode').style.display = 'none';
+    document.getElementById('authStepEmail').style.display = 'block';
   });
 
   document.getElementById('authLogoutBtn').addEventListener('click', async ()=>{
@@ -640,7 +696,10 @@
     setSignedOutUI();
   });
 
-  /* ---------------- DOCUMENT PERSISTENCE ---------------- */
+  /* ---------------- DOCUMENT PERSISTENCE + ONE-EDITOR-AT-A-TIME LOCK ---------------- */
+  const lockBanner = document.getElementById('lockBanner');
+  const lockBannerText = document.getElementById('lockBannerText');
+
   async function loadDocument(){
     if(!sb || !currentUser) return;
     const { data, error } = await sb.from('documents').select('*').eq('id','primary').single();
@@ -649,7 +708,53 @@
     if(data.title) document.getElementById('docTitle').value = data.title;
     if(data.case_no) document.getElementById('caseNo').value = data.case_no;
     updateCounts();
+    await applyLockState(data);
   }
+
+  async function applyLockState(doc){
+    if(!doc.checked_out_by){
+      // free — nobody holds the pen right now
+      editor.contentEditable = 'false';
+      lockBanner.classList.remove('on');
+      sessionToggleBtn.disabled = false;
+      sessionToggleBtn.textContent = 'Start session';
+      sessionStatus.textContent = 'Free \u2014 click Start session to take over';
+    } else if(doc.checked_out_by === currentUser.id){
+      // it's you — either you just claimed it, or you reloaded mid-session
+      editor.contentEditable = 'true';
+      lockBanner.classList.remove('on');
+      sessionToggleBtn.disabled = false;
+      sessionToggleBtn.textContent = 'End session';
+      if(!activeSession){
+        // reconnect: find the still-open session row for this doc/user
+        const { data: openRows } = await sb.from('edit_sessions')
+          .select('*').eq('document_id','primary').eq('user_id', currentUser.id).is('ended_at', null)
+          .order('started_at',{ascending:false}).limit(1);
+        const startedAt = (openRows && openRows[0]) ? new Date(openRows[0].started_at).getTime() : Date.now();
+        const rowId = (openRows && openRows[0]) ? openRows[0].id : null;
+        const startWords = editor.innerText.trim() ? editor.innerText.trim().split(/\s+/).length : 0;
+        activeSession = { id: rowId, startedAt, startWords };
+        tickSessionStatus();
+        activeSession.timer = setInterval(tickSessionStatus, 30000);
+      }
+    } else {
+      // someone else has it
+      editor.contentEditable = 'false';
+      lockBannerText.textContent = 'Being edited by ' + doc.checked_out_by_name + ' \u2014 ' + timeAgo(new Date(doc.checked_out_at));
+      lockBanner.classList.add('on');
+      sessionToggleBtn.disabled = true;
+      sessionToggleBtn.textContent = 'Locked by ' + doc.checked_out_by_name;
+      sessionStatus.textContent = 'Locked by ' + doc.checked_out_by_name;
+    }
+  }
+
+  async function refreshLockStatus(){
+    if(!sb || !currentUser) return;
+    const { data } = await sb.from('documents').select('checked_out_by,checked_out_by_name,checked_out_at').eq('id','primary').single();
+    if(data) applyLockState(Object.assign({}, data, { content: null }));
+  }
+  document.getElementById('refreshLockBtn').addEventListener('click', refreshLockStatus);
+  setInterval(()=>{ if(currentUser && !activeSession) refreshLockStatus(); }, 15000);
 
   let cloudSaveTimer = null;
   function scheduleCloudSave(){
@@ -665,20 +770,36 @@
       }).eq('id','primary');
       const savedIndicator = document.getElementById('savedIndicator');
       if(error){ savedIndicator.textContent = 'Save failed \u2014 retrying…'; savedIndicator.classList.remove('saved-ok'); }
-      else { savedIndicator.textContent = 'Saved \u2713'; savedIndicator.classList.add('saved-ok'); }
+      else { savedIndicator.textContent = 'Saved \u2713'; savedIndicator.classList.add('saved-ok'); lastSavedAt = new Date(); }
     }, 1200);
   }
 
-  /* ---------------- SESSION LOG (non-blocking) ---------------- */
+  /* ---------------- SESSION = THE LOCK ----------------
+     "Start session" atomically claims the document (fails safely if
+     someone else grabbed it a moment earlier); "End session" releases
+     it and closes out the log row. This is the one-editor-at-a-time
+     enforcement, and the edit_sessions log doubles as the audit trail
+     of who held the pen, when, for how long. */
   async function startSession(){
     if(!sb || !currentUser) return;
+    sessionToggleBtn.disabled = true;
+    const { data: claimed, error: claimErr } = await sb.from('documents')
+      .update({ checked_out_by: currentUser.id, checked_out_by_name: currentDisplayName, checked_out_at: new Date().toISOString() })
+      .eq('id','primary').is('checked_out_by', null).select();
+    if(claimErr || !claimed || !claimed.length){
+      sessionStatus.textContent = 'Someone just started \u2014 refreshing\u2026';
+      await refreshLockStatus();
+      return;
+    }
     const startWords = editor.innerText.trim() ? editor.innerText.trim().split(/\s+/).length : 0;
     const { data, error } = await sb.from('edit_sessions').insert({
       document_id: 'primary', user_id: currentUser.id, display_name: currentDisplayName,
       started_at: new Date().toISOString()
     }).select().single();
-    if(error){ sessionStatus.textContent = 'Couldn\u2019t start: ' + error.message; return; }
-    activeSession = { id: data.id, startedAt: Date.now(), startWords };
+    activeSession = { id: error ? null : data.id, startedAt: Date.now(), startWords };
+    editor.contentEditable = 'true';
+    lockBanner.classList.remove('on');
+    sessionToggleBtn.disabled = false;
     sessionToggleBtn.textContent = 'End session';
     tickSessionStatus();
     activeSession.timer = setInterval(tickSessionStatus, 30000);
@@ -686,7 +807,7 @@
   function tickSessionStatus(){
     if(!activeSession) return;
     const mins = Math.max(0, Math.round((Date.now() - activeSession.startedAt) / 60000));
-    sessionStatus.textContent = mins < 1 ? 'Just started' : mins + ' min elapsed';
+    sessionStatus.textContent = (mins < 1 ? 'Just started' : mins + ' min elapsed') + ' \u2014 locked to you';
   }
   async function endSession(){
     if(!sb || !activeSession) return;
@@ -695,12 +816,17 @@
     const endWords = editor.innerText.trim() ? editor.innerText.trim().split(/\s+/).length : 0;
     const delta = endWords - activeSession.startWords;
     const summary = delta === 0 ? 'No net word-count change' : (delta > 0 ? '+' + delta + ' words' : delta + ' words');
-    await sb.from('edit_sessions').update({
-      ended_at: new Date().toISOString(), duration_seconds: durationSeconds, summary
-    }).eq('id', activeSession.id);
+    if(activeSession.id){
+      await sb.from('edit_sessions').update({
+        ended_at: new Date().toISOString(), duration_seconds: durationSeconds, summary
+      }).eq('id', activeSession.id);
+    }
+    await sb.from('documents').update({ checked_out_by: null, checked_out_by_name: null, checked_out_at: null })
+      .eq('id','primary').eq('checked_out_by', currentUser.id);
     activeSession = null;
+    editor.contentEditable = 'false';
     sessionToggleBtn.textContent = 'Start session';
-    sessionStatus.textContent = 'Not started';
+    sessionStatus.textContent = 'Free \u2014 click Start session to take over';
     await renderTeamActivity();
   }
   sessionToggleBtn.addEventListener('click', ()=>{ activeSession ? endSession() : startSession(); });
@@ -760,9 +886,12 @@
     const text = editor.innerText.trim();
     const words = text ? text.split(/\s+/).length : 0;
     document.getElementById('statusWords').textContent = words + ' Words';
-    const pages = Math.max(1, Math.ceil(words/380));
+    renumberPageBreaks();
+    const breakCount = editor.querySelectorAll('.pagebreak').length;
+    const pages = breakCount > 0 ? breakCount + 1 : Math.max(1, Math.ceil(words/380));
     document.getElementById('statusPage').textContent = 'Page 1 of ' + pages;
-    document.getElementById('pageCountLabel').textContent = pages + (pages===1?' estimated page':' estimated pages');
+    document.getElementById('pageCountLabel').textContent = pages + (pages===1?' page':' pages') + (breakCount===0 ? ' (estimated)' : '');
+    rebuildPagesList();
     rebuildHeadings();
     if(currentUser){
       scheduleCloudSave();
@@ -796,6 +925,24 @@
     });
   }
   document.getElementById('jumpTop').addEventListener('click', ()=> pageScroll.scrollTo({top:0, behavior:'smooth'}));
+
+  /* ---------------- REAL PAGE NUMBERING ---------------- */
+  function renumberPageBreaks(){
+    const breaks = editor.querySelectorAll('.pagebreak');
+    breaks.forEach((b, i)=>{ b.textContent = 'Page ' + (i + 2); });
+  }
+  function rebuildPagesList(){
+    const list = document.getElementById('pagesList');
+    // keep the permanent "Page 1" item (jumpTop), drop everything after it, rebuild
+    while(list.children.length > 1) list.removeChild(list.lastChild);
+    editor.querySelectorAll('.pagebreak').forEach((b)=>{
+      const item = document.createElement('div');
+      item.className = 'ex-item';
+      item.innerHTML = '<span class="dot"></span>' + (b.textContent || 'Page');
+      item.addEventListener('click', ()=> scrollElementIntoViewMinimal(b, pageScroll));
+      list.appendChild(item);
+    });
+  }
 
   /* Reusable container-relative scroll helper — never jumps to page top */
   function scrollElementIntoViewMinimal(el, container){
@@ -853,7 +1000,7 @@
   /* new document / cut / page break / print / image */
   document.getElementById('newDocBtn').addEventListener('click', ()=>{
     if(confirm('Start a new blank document? This clears the current draft.')){
-      editor.innerHTML = '<h1>Untitled Application</h1><p>&nbsp;</p>';
+      editor.innerHTML = '<p><br></p>';
       updateCounts();
     }
   });
@@ -864,7 +1011,7 @@
   });
   document.getElementById('pageBreakBtn').addEventListener('click', ()=>{
     editor.focus();
-    document.execCommand('insertHTML', false, '<div class="pagebreak" contenteditable="false">Page break</div><p></p>');
+    document.execCommand('insertHTML', false, '<div class="pagebreak" contenteditable="false"></div><p></p>');
     updateCounts();
   });
   document.getElementById('printBtn').addEventListener('click', ()=> window.print());
@@ -1378,18 +1525,53 @@
   document.getElementById('assistantCloseBtn').addEventListener('click', closeAssistant);
 
   /* ---------------- NAV TABS ---------------- */
+  function flashHighlight(el){
+    if(!el) return;
+    el.classList.remove('flash-highlight');
+    void el.offsetWidth; // restart animation if triggered twice in a row
+    el.classList.add('flash-highlight');
+    setTimeout(()=> el.classList.remove('flash-highlight'), 1000);
+  }
+
+  const docInfoPopover = document.getElementById('docInfoPopover');
+  function openDocInfo(){
+    document.getElementById('diTitle').textContent = document.getElementById('docTitle').value || 'Untitled';
+    document.getElementById('diCase').textContent = document.getElementById('caseNo').value || '\u2014';
+    document.getElementById('diWords').textContent = editor.innerText.trim() ? editor.innerText.trim().split(/\s+/).length : 0;
+    document.getElementById('diPages').textContent = document.getElementById('statusPage').textContent.replace('Page 1 of ','') || '1';
+    document.getElementById('diSaved').textContent = currentUser ? (lastSavedAt ? timeAgo(lastSavedAt) : 'Not saved yet') : 'Signed out \u2014 not saving to database';
+    docInfoPopover.classList.add('open');
+  }
+  document.querySelectorAll('.popover').forEach(p=> p!==docInfoPopover && p.addEventListener('click', e=>e.stopPropagation()));
+  docInfoPopover.addEventListener('click', e=> e.stopPropagation());
+  document.getElementById('docInfoCloseBtn').addEventListener('click', ()=> docInfoPopover.classList.remove('open'));
+
+  let lastSavedAt = null;
+  function timeAgo(date){
+    const s = Math.round((Date.now()-date.getTime())/1000);
+    if(s < 60) return 'Just now';
+    if(s < 3600) return Math.round(s/60) + ' min ago';
+    return Math.round(s/3600) + ' hr ago';
+  }
+
   function setView(view){
     document.querySelectorAll('.navtab').forEach(t=> t.classList.toggle('active', t.dataset.view===view));
     if(view === 'review') enterReview(); else exitReview();
+    if(view !== 'documents') docInfoPopover.classList.remove('open');
     if(view === 'transcript') openAssistant('sec-transcript', 'Live Transcript');
-    if(view === 'ai') openAssistant('sec-ai', 'AI Suggestions');
-    if(view === 'documents'){ document.querySelector('.explorer').scrollTo({top:0, behavior:'smooth'}); }
-    if(view === 'evidence'){ scrollElementIntoViewMinimal(document.getElementById('evidenceSection'), document.querySelector('.explorer')); }
+    if(view === 'ai'){ openAssistant('sec-ai', 'AI Suggestions'); setTimeout(()=> flashHighlight(document.getElementById('sec-ai')), 50); }
+    if(view === 'documents') openDocInfo();
+    if(view === 'evidence'){
+      const sec = document.getElementById('evidenceSection');
+      scrollElementIntoViewMinimal(sec, document.querySelector('.explorer'));
+      flashHighlight(sec);
+    }
     if(view === 'home') closeAssistant();
     if(view === 'settings'){ document.getElementById('settingsPopover').classList.add('open'); }
     else { document.getElementById('settingsPopover').classList.remove('open'); }
   }
-  document.querySelectorAll('.navtab').forEach(t=> t.addEventListener('click', ()=> setView(t.dataset.view)));
+  document.querySelectorAll('.navtab').forEach(t=> t.addEventListener('click', (e)=>{ e.stopPropagation(); setView(t.dataset.view); }));
+
 
   /* settings popover */
   const settingsBtn = document.getElementById('settingsBtn');
